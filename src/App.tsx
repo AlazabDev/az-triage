@@ -15,6 +15,10 @@ import BugList from "./pages/BugList";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import ReconciliationList from "./pages/ReconciliationList";
+import ReconciliationNew from "./pages/ReconciliationNew";
+import ReconciliationReview from "./pages/ReconciliationReview";
+import SharedReview from "./pages/SharedReview";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +39,10 @@ const App = () => (
               <Route path="/bugs/:id" element={<ProtectedRoute><BugDetail /></ProtectedRoute>} />
               <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/reconciliation" element={<ProtectedRoute><ReconciliationList /></ProtectedRoute>} />
+              <Route path="/reconciliation/new" element={<ProtectedRoute><ReconciliationNew /></ProtectedRoute>} />
+              <Route path="/reconciliation/:id" element={<ProtectedRoute><ReconciliationReview /></ProtectedRoute>} />
+              <Route path="/share/:token" element={<SharedReview />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
