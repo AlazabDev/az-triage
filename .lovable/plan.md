@@ -1,26 +1,113 @@
 
+# نظام فرز ومطابقة إذون الصيانة
 
-# Security Hardening Plan
+نبني وحدة جديدة داخل التطبيق باسم **"الفرز والمطابقة"** تشتغل بجانب نظام الـ Bug Tracker الحالي، مخصصة لمطابقة إذون استلام الصيانة مع مستخلصات Excel عبر وكيل Microsoft Foundry.
 
-## Security Scan Results
-The scan found 10 issues. For a team bug tracker, most broad SELECT policies are intentional (team members need to see bugs, comments, profiles, activity). The real fixes needed are:
+---
 
-## Changes
+## 1. البنية العامة
 
-### 1. Database Migration — Tighten RLS Policies
-- **company_settings SELECT**: Change from `true` to `auth.uid() = user_id` (only owner sees their company settings)
-- **invitations SELECT**: Change from `true` to `auth.uid() = invited_by OR has_role(auth.uid(), 'admin')` (only inviter/admins see invitations)
-- **user_roles**: Drop the redundant "Authenticated can view all roles" policy. Keep "Users can view own roles" and "Admins can manage roles". Add a new SELECT policy for admins: `has_role(auth.uid(), 'admin')`. For the Team tab, use the existing `has_role` security definer function pattern instead of direct table access.
-- **Enable leaked password protection** via auth config
+**التدفق:**
+```
+رفع PDF/صور إذون  ──►  Foundry Agent (OCR + استخراج)
+                            │
+رفع Excel مرجعي   ──►  مطابقة (كود بند / كمية / وصف)
+                            │
+                            ▼
+                واجهة مراجعة أفقية (صورة + بنود)
+                            │
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+        Excel نهائي منقح            PDF دفتر مراجعة
+                     │
+                     ▼
+              رابط عام للاعتماد
+```
 
-### 2. Settings.tsx — Team Tab Fix
-After tightening `user_roles` and `profiles` visibility, the Team tab needs to fetch team members via a security definer function that returns profiles with roles (so non-admins can see team members without direct table access).
+## 2. قاعدة البيانات (جداول جديدة)
 
-### 3. New Security Definer Function
-Create `get_team_members()` — returns user_id, full_name, job_title, avatar_url, and role for all users. Called by the Team tab instead of directly querying profiles + user_roles.
+- `reconciliation_sessions` — جلسة مراجعة (اسم، فرع، تاريخ، حالة، صاحبها، share_token عام)
+- `receipt_documents` — كل PDF/صورة مرفوعة (session_id, storage_path, page_count)
+- `receipt_pages` — كل إذن (صفحة) مع رقم الإذن `doc-page` مثل `5-02`، والفرع، والتاريخ، وصورة الصفحة
+- `receipt_items` — البنود المستخرجة (كود `4-12-01`، الوصف، الوحدة، الكمية، السعر، الحالة: مؤكد/مؤكد جزئياً/يحتاج مراجعة/غير موجود بالإذن، ملاحظة مراجع)
+- `excel_snapshots` — نسخة Excel المرفوعة لكل جلسة (البيانات JSON)
 
-## Files Modified
-- New SQL migration: drop/recreate policies for company_settings, invitations, user_roles; create `get_team_members()` function
-- `src/pages/Settings.tsx` — update Team tab to call the new function
-- Auth config: enable leaked password protection
+Bucket جديد `maintenance-receipts` لحفظ الـ PDFs والصور المستخرجة، و`review-exports` للـ PDFs المولدة.
 
+## 3. وكيل Foundry
+
+سنطلب مفتاح Foundry API عبر `add_secret` كـ `AZURE_FOUNDRY_API_KEY` مع endpoint ثابت في الـ Edge Function:
+`https://az-ai-resource.services.ai.azure.com/api/projects/az-ai-gateway`
+
+Edge Functions جديدة:
+- `foundry-extract-receipt` — يستقبل صورة صفحة إذن، يرسلها للوكيل، يرجع JSON بالبنود
+- `reconcile-session` — يطابق البنود المستخرجة مع صفوف Excel (fuzzy match على الوصف + مطابقة الكميات) ويحدد حالة كل بند
+- `generate-review-pdf` — يبني PDF دفتر المراجعة (صورة + بنود + فهرس)
+- `public-session` — endpoint عام (بدون auth) يقرأ الجلسة بـ share_token
+
+**ملحوظة عن التغذية الراجعة:** الوكيل نفسه (اللي دربته على 3500 طلب صيانة) يتحمل جودة الاستخراج. الـ Edge Function ترسل الصورة + prompt واضح ("استخرج بنود الصيانة من إذن الاستلام هذا كـ JSON بالحقول التالية...") وترجع النتيجة كما هي. لو الاستخراج ضعيف، الوكيل نفسه يتحسن، مش كودنا.
+
+## 4. الواجهة (صفحات جديدة)
+
+مسارات جديدة تحت `/reconciliation`:
+- `/reconciliation` — قائمة جلسات المراجعة
+- `/reconciliation/new` — رفع PDF/صور + Excel، بدء المعالجة
+- `/reconciliation/:id` — **شاشة المراجعة الرئيسية** بالتصميم اللي طلبته:
+  - رأس: رقم المستند، الصفحة، الفرع، التاريخ، عدد البنود
+  - يسار: صورة الإذن كاملة مع تكبير (react-zoom-pan-pinch)
+  - يمين: جدول البنود (الكود، الوصف، الوحدة، الكمية، السعر، الحالة، ملاحظات)
+  - أسفل: أزرار الحالة الأربعة + حقل التصحيح
+  - تنقل بين الصفحات (السابق/التالي، قفزة لـ `5-02`)
+- `/reconciliation/:id/export` — تصدير Excel النهائي + PDF دفتر المراجعة
+- `/share/:token` — عرض عام read-only للاعتماد
+
+Sidebar الحالي يضاف له قسم "الفرز والمطابقة".
+
+## 5. المخرجات
+
+**Excel النهائي:** شيت واحد، الأعمدة العشرة المعتمدة، مرتب زمنياً، عمود "صفحة الإذن" بالصيغة `5-02`.
+
+**PDF دفتر المراجعة:** أول صفحة فهرس بأرقام الإذون، ثم لكل إذن صفحة أفقية (landscape A4):
+- ترويسة بالبيانات
+- صورة الإذن على اليسار (نصف الصفحة)
+- جدول البنود على اليمين
+- خانة نتيجة المراجعة أسفل الصفحة
+
+نستخدم مكتبة `pdf-lib` أو نبني HTML ونطبع لـ PDF داخل Edge Function.
+
+**رابط عام:** `/share/{token}` يعرض دفتر المراجعة كصفحات ويب read-only مع زر تحميل PDF، بدون auth.
+
+---
+
+## القسم التقني
+
+- **Stack:** React + Vite + Supabase (الحالي)، RLS كامل على كل الجداول الجديدة
+- **Storage:** bucket خاص، الوصول عبر signed URLs للصور، bucket عام صغير للـ share
+- **Foundry call:** من Edge Function فقط، المفتاح Server-only، multipart أو base64 image
+- **Matching:** خوارزمية fuzzy على الوصف (Levenshtein/token-based) + تطابق كمية = مؤكد، تطابق جزئي = مؤكد جزئياً، عدم وجود في الإذن = "غير موجود بالإذن"
+- **PDF:** landscape A4، RTL، خط Arabic (Cairo أو Amiri عبر ملف)
+- **حجم PDF المرفوع:** حد أقصى 50MB، pdf.js لتقسيم لصفحات client-side قبل الرفع
+
+---
+
+## خطة التنفيذ (مراحل)
+
+**المرحلة 1 — البنية التحتية (هذه الجلسة):**
+- إنشاء الجداول والـ RLS
+- إنشاء الـ Storage buckets
+- طلب مفتاح Foundry
+- Edge Function `foundry-extract-receipt` تجريبية + endpoint test
+
+**المرحلة 2 — الرفع والاستخراج:**
+- صفحة `/reconciliation/new`، رفع PDF، تقسيم لصفحات، استدعاء الوكيل صفحة بصفحة، حفظ البنود
+
+**المرحلة 3 — واجهة المراجعة الأفقية:**
+- شاشة المراجعة بالتصميم المطلوب، أزرار الحالة، الملاحظات
+
+**المرحلة 4 — المطابقة مع Excel:**
+- رفع Excel، `reconcile-session`، تلوين البنود حسب الحالة
+
+**المرحلة 5 — التصدير + المشاركة:**
+- Excel export، PDF export، رابط عام
+
+هل نبدأ بالمرحلة 1؟ لو موافق سأطلب منك بعدها مفتاح Foundry مباشرة.
