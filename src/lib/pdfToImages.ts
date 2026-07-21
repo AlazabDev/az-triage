@@ -1,7 +1,7 @@
 // Render each page of a PDF file to a PNG blob using pdf.js
 import * as pdfjs from 'pdfjs-dist';
 // Use a bundled worker URL so we don't rely on a CDN
-// @ts-expect-error - vite worker import
+// @ts-ignore - vite worker import
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker&url';
 
 pdfjs.GlobalWorkerOptions.workerSrc = PdfWorker;
