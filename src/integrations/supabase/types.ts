@@ -235,6 +235,47 @@ export type Database = {
         }
         Relationships: []
       }
+      excel_snapshots: {
+        Row: {
+          columns: Json
+          created_at: string
+          id: string
+          original_filename: string
+          row_count: number
+          rows: Json
+          session_id: string
+          storage_path: string | null
+        }
+        Insert: {
+          columns?: Json
+          created_at?: string
+          id?: string
+          original_filename: string
+          row_count?: number
+          rows?: Json
+          session_id: string
+          storage_path?: string | null
+        }
+        Update: {
+          columns?: Json
+          created_at?: string
+          id?: string
+          original_filename?: string
+          row_count?: number
+          rows?: Json
+          session_id?: string
+          storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "excel_snapshots_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           created_at: string
@@ -357,6 +398,236 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      receipt_documents: {
+        Row: {
+          created_at: string
+          document_number: number
+          id: string
+          original_filename: string
+          page_count: number
+          session_id: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          document_number: number
+          id?: string
+          original_filename: string
+          page_count?: number
+          session_id: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          document_number?: number
+          id?: string
+          original_filename?: string
+          page_count?: number
+          session_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_documents_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipt_items: {
+        Row: {
+          ai_raw: Json | null
+          corrected_description: string | null
+          created_at: string
+          description: string
+          id: string
+          item_code: string
+          item_index: number
+          match_score: number | null
+          match_status: string
+          matched_excel_row: Json | null
+          page_id: string
+          quantity: number | null
+          reviewer_note: string | null
+          session_id: string
+          total: number | null
+          unit: string | null
+          unit_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          ai_raw?: Json | null
+          corrected_description?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          item_code: string
+          item_index: number
+          match_score?: number | null
+          match_status?: string
+          matched_excel_row?: Json | null
+          page_id: string
+          quantity?: number | null
+          reviewer_note?: string | null
+          session_id: string
+          total?: number | null
+          unit?: string | null
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ai_raw?: Json | null
+          corrected_description?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          item_code?: string
+          item_index?: number
+          match_score?: number | null
+          match_status?: string
+          matched_excel_row?: Json | null
+          page_id?: string
+          quantity?: number | null
+          reviewer_note?: string | null
+          session_id?: string
+          total?: number | null
+          unit?: string | null
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_items_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "receipt_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_items_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipt_pages: {
+        Row: {
+          branch: string | null
+          created_at: string
+          document_id: string
+          extraction_error: string | null
+          extraction_status: string
+          id: string
+          image_path: string
+          invoice_number: string | null
+          page_index: number
+          receipt_code: string
+          receipt_date: string | null
+          review_status: string
+          reviewer_note: string | null
+          session_id: string
+          supplier: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch?: string | null
+          created_at?: string
+          document_id: string
+          extraction_error?: string | null
+          extraction_status?: string
+          id?: string
+          image_path: string
+          invoice_number?: string | null
+          page_index: number
+          receipt_code: string
+          receipt_date?: string | null
+          review_status?: string
+          reviewer_note?: string | null
+          session_id: string
+          supplier?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch?: string | null
+          created_at?: string
+          document_id?: string
+          extraction_error?: string | null
+          extraction_status?: string
+          id?: string
+          image_path?: string
+          invoice_number?: string | null
+          page_index?: number
+          receipt_code?: string
+          receipt_date?: string | null
+          review_status?: string
+          reviewer_note?: string | null
+          session_id?: string
+          supplier?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_pages_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "receipt_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_pages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reconciliation_sessions: {
+        Row: {
+          branch: string | null
+          created_at: string
+          id: string
+          is_public: boolean
+          name: string
+          notes: string | null
+          owner_id: string
+          session_date: string | null
+          share_token: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          branch?: string | null
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          name: string
+          notes?: string | null
+          owner_id: string
+          session_date?: string | null
+          share_token?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          branch?: string | null
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          session_date?: string | null
+          share_token?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: []
