@@ -13,6 +13,7 @@ export const navItems = [
   { icon: Plus, label: "Report Bug", path: "/bugs/new" },
   { icon: Bug, label: "All Bugs", path: "/bugs" },
   { icon: FileSearch, label: "الفرز والمطابقة", path: "/reconciliation" },
+  { icon: Brain, label: "تدريب الوكيل", path: "/agent-training" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
