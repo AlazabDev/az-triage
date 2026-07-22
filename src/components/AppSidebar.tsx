@@ -22,8 +22,11 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
   const location = useLocation();
   const { profile, signOut } = useAuth();
 
-  const initials = profile?.full_name
-    ? profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+  // Safe extraction: profile may be null and full_name may be typed as `never` in generated types
+  const fullName = (profile as { full_name?: string } | null)?.full_name ?? undefined;
+
+  const initials = fullName
+    ? fullName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
     : "U";
 
   return (
