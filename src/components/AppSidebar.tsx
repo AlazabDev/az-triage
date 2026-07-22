@@ -1,4 +1,4 @@
-import { LayoutDashboard, Plus, Bug, BarChart3, Settings, LogOut, Search, FileSearch } from "lucide-react";
+import { LayoutDashboard, Plus, Bug, BarChart3, Settings, LogOut, Search, FileSearch, Brain } from "lucide-react";
 import { StackedLogo } from "./StackedLogo";
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
