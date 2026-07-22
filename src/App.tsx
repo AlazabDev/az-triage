@@ -19,6 +19,7 @@ import ReconciliationList from "./pages/ReconciliationList";
 import ReconciliationNew from "./pages/ReconciliationNew";
 import ReconciliationReview from "./pages/ReconciliationReview";
 import SharedReview from "./pages/SharedReview";
+import AgentTraining from "./pages/AgentTraining";
 
 const queryClient = new QueryClient();
 
