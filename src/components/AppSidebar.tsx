@@ -75,7 +75,7 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
           </Avatar>
           {!collapsed && (
             <span className="text-[12px] text-sidebar-foreground truncate flex-1">
-              {profile?.full_name || "User"}
+              {fullName || "User"}
             </span>
           )}
           {!collapsed && (
