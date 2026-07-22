@@ -129,7 +129,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Geist', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-family: 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     font-size: 14px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
