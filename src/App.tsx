@@ -19,6 +19,7 @@ import ReconciliationList from "./pages/ReconciliationList";
 import ReconciliationNew from "./pages/ReconciliationNew";
 import ReconciliationReview from "./pages/ReconciliationReview";
 import SharedReview from "./pages/SharedReview";
+import AgentTraining from "./pages/AgentTraining";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/reconciliation" element={<ProtectedRoute><ReconciliationList /></ProtectedRoute>} />
               <Route path="/reconciliation/new" element={<ProtectedRoute><ReconciliationNew /></ProtectedRoute>} />
               <Route path="/reconciliation/:id" element={<ProtectedRoute><ReconciliationReview /></ProtectedRoute>} />
+              <Route path="/agent-training" element={<ProtectedRoute><AgentTraining /></ProtectedRoute>} />
               <Route path="/share/:token" element={<SharedReview />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
