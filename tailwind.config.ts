@@ -77,7 +77,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "system-ui", "sans-serif"],
+        sans: ["IBM Plex Sans Arabic", "-apple-system", "BlinkMacSystemFont", "system-ui", "sans-serif"],
       },
       fontSize: {
         "2xs": ["0.6875rem", { lineHeight: "1rem" }],
