@@ -43,6 +43,7 @@ const App = () => (
               <Route path="/reconciliation" element={<ProtectedRoute><ReconciliationList /></ProtectedRoute>} />
               <Route path="/reconciliation/new" element={<ProtectedRoute><ReconciliationNew /></ProtectedRoute>} />
               <Route path="/reconciliation/:id" element={<ProtectedRoute><ReconciliationReview /></ProtectedRoute>} />
+              <Route path="/agent-training" element={<ProtectedRoute><AgentTraining /></ProtectedRoute>} />
               <Route path="/share/:token" element={<SharedReview />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
