@@ -33,7 +33,7 @@ export default function AgentChat() {
   const executeToolCall = async (toolCall: any) => {
     const { name, arguments: argsString } = toolCall.function;
     let args: any = {};
-    try { args = JSON.parse(argsString); } catch(e) {}
+    try { args = JSON.parse(argsString); } catch (e) { /* تجاهل خطأ تحليل JSON */ }
 
     if (name === "list_training_files") {
       const { data, error } = await supabase.storage.from(BUCKET).list("", { limit: 100 });

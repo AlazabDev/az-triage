@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.document_embeddings (
     document_id UUID NOT NULL REFERENCES public.receipt_documents(id) ON DELETE CASCADE,
     session_id UUID NOT NULL REFERENCES public.reconciliation_sessions(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
-    embedding vector(3072), -- text-embedding-3-large default dimension is 3072
+    embedding vector(1536), -- text-embedding-3-large default dimension is 3072
     metadata JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.item_embeddings (
     item_id UUID NOT NULL REFERENCES public.receipt_items(id) ON DELETE CASCADE,
     session_id UUID NOT NULL REFERENCES public.reconciliation_sessions(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
-    embedding vector(3072),
+    embedding vector(1536),
     metadata JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
