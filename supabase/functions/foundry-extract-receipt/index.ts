@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
 
     // 4. Poll status
     let status = run.data.status;
-    let runId = run.data.id;
+    const runId = run.data.id;
     const deadline = Date.now() + 90_000;
     while (['queued', 'in_progress', 'requires_action'].includes(status) && Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 1500));
@@ -154,25 +154,68 @@ Deno.serve(async (req) => {
     if (parsed.receipt_date && /^\d{4}-\d{2}-\d{2}$/.test(parsed.receipt_date)) pageUpdate.receipt_date = parsed.receipt_date;
     await admin.from('receipt_pages').update(pageUpdate).eq('id', page.id);
 
+    const aiEndpoint = Deno.env.get('AZURE_COGNITIVE_ENDPOINT');
+    const aiKey = Deno.env.get('AZURE_COGNITIVE_KEY1');
+
+    // Generate Embeddings
+    let docEmbedding: number[] | null = null;
+    const pageText = parsed.items?.map(it => it.description).join('\n') || parsed.branch || 'Receipt Page';
+    if (aiEndpoint && aiKey) {
+      docEmbedding = await generateEmbedding(pageText, aiEndpoint, aiKey);
+    }
+
+    if (docEmbedding) {
+      await admin.from('document_embeddings').insert({
+        session_id: page.session_id,
+        document_id: page.document_id,
+        content: pageText,
+        embedding: `[${docEmbedding.join(',')}]`,
+        metadata: { page_id: page.id, receipt_code: receiptCode }
+      });
+    }
+
     // Clear existing items and reinsert
     await admin.from('receipt_items').delete().eq('page_id', page.id);
-    const receiptCode = String(pageUpdate.receipt_code ?? '');
-    const rowsToInsert = (parsed.items ?? []).map((it, idx) => ({
-      session_id: page.session_id,
-      page_id: page.id,
-      item_index: it.item_index ?? idx + 1,
-      item_code: receiptCode ? `${receiptCode}-${String(it.item_index ?? idx + 1).padStart(2, '0')}` : `${page.page_index}-${String(idx + 1).padStart(2, '0')}`,
-      description: (it.description ?? '').toString().slice(0, 1000),
-      unit: it.unit ?? null,
-      quantity: toNum(it.quantity),
-      unit_price: toNum(it.unit_price),
-      total: toNum(it.total),
-      match_status: 'unmatched',
-      ai_raw: it,
-    }));
-    if (rowsToInsert.length) {
-      const { error: insErr } = await admin.from('receipt_items').insert(rowsToInsert);
-      if (insErr) return failPage(admin, page.id, `insert items: ${insErr.message}`);
+    const rowsToInsert = [];
+    const itemEmbeddingsToInsert = [];
+    
+    for (let idx = 0; idx < (parsed.items ?? []).length; idx++) {
+      const it = parsed.items![idx];
+      const itemCode = receiptCode ? `${receiptCode}-${String(it.item_index ?? idx + 1).padStart(2, '0')}` : `${page.page_index}-${String(idx + 1).padStart(2, '0')}`;
+      const description = (it.description ?? '').toString().slice(0, 1000);
+      
+      const itemRow = {
+        session_id: page.session_id,
+        page_id: page.id,
+        item_index: it.item_index ?? idx + 1,
+        item_code: itemCode,
+        description: description,
+        unit: it.unit ?? null,
+        quantity: toNum(it.quantity),
+        unit_price: toNum(it.unit_price),
+        total: toNum(it.total),
+        match_status: 'unmatched',
+        ai_raw: it,
+      };
+      
+      const { data: insertedItem, error: insErr } = await admin.from('receipt_items').insert(itemRow).select('id').single();
+      if (!insErr && insertedItem && description && aiEndpoint && aiKey) {
+        const itemEmb = await generateEmbedding(description, aiEndpoint, aiKey);
+        if (itemEmb) {
+          itemEmbeddingsToInsert.push({
+            item_id: insertedItem.id,
+            session_id: page.session_id,
+            content: description,
+            embedding: `[${itemEmb.join(',')}]`,
+            metadata: { item_code: itemCode }
+          });
+        }
+      }
+      rowsToInsert.push(itemRow);
+    }
+    
+    if (itemEmbeddingsToInsert.length > 0) {
+      await admin.from('item_embeddings').insert(itemEmbeddingsToInsert);
     }
 
     return json({ ok: true, items: rowsToInsert.length, extracted: parsed });
@@ -234,3 +277,36 @@ function base64Encode(bytes: Uint8Array): string {
   }
   return btoa(s);
 }
+
+async function generateEmbedding(text: string, endpoint: string, apiKey: string): Promise<number[] | null> {
+  if (!text) return null;
+  try {
+    const deployment = Deno.env.get('AZURE_EMBEDDING_DEPLOYMENT') || 'text-embedding-3-large';
+    const apiVersion = '2023-05-15'; 
+    
+    let baseUrl = endpoint;
+    if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+    
+    const url = `${baseUrl}/openai/deployments/${deployment}/embeddings?api-version=${apiVersion}`;
+    
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': apiKey,
+      },
+      body: JSON.stringify({ input: text })
+    });
+    
+    if (!res.ok) {
+      console.error('Embedding failed', res.status, await res.text());
+      return null;
+    }
+    const json = await res.json();
+    return json.data?.[0]?.embedding ?? null;
+  } catch(e) {
+    console.error('embedding error', e);
+    return null;
+  }
+}
+

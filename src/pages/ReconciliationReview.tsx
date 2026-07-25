@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -96,6 +96,54 @@ export default function ReconciliationReview() {
     refresh();
   };
 
+  const goNext = () => setCurrentIdx((i) => Math.min(pages.length - 1, i + 1));
+  const goPrev = () => setCurrentIdx((i) => Math.max(0, i - 1));
+
+  // أهم ميزة للسرعة: معظم الأذون بتتطابق صح من أول مرة، فبدل ما تضغط على كل
+  // بند لوحده، ضغطة واحدة تأكّد كل بنود الإذن الحالي + الإذن نفسه، وتنقل
+  // تلقائيًا للي بعده — نفس فكرة "swipe to approve" في تطبيقات المراجعة السريعة.
+  const confirmAllAndNext = async () => {
+    if (!currentPage) return;
+    const ids = pageItems.map((it) => it.id);
+    if (ids.length) {
+      await (supabase as any).from("receipt_items").update({ match_status: "confirmed" }).in("id", ids);
+    }
+    await (supabase as any).from("receipt_pages").update({ review_status: "confirmed" }).eq("id", currentPage.id);
+    await refresh();
+    goNext();
+  };
+
+  const flagAndNext = async () => {
+    if (!currentPage) return;
+    await (supabase as any).from("receipt_pages").update({ review_status: "needs_review" }).eq("id", currentPage.id);
+    await refresh();
+    goNext();
+  };
+
+  // اختصارات كيبورد: Enter/C = تأكيد الكل والتالي، F = تعليم يحتاج مراجعة والتالي،
+  // الأسهم = تنقل بدون تغيير حالة. بتوفر وقت كبير على دفعات كبيرة من الأذون.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "TEXTAREA" || tag === "INPUT") return; // ما تتعارضش مع الكتابة في الملاحظات
+      if (e.key === "Enter" || e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        confirmAllAndNext();
+      } else if (e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        flagAndNext();
+      } else if (e.key === "ArrowLeft") {
+        goNext(); // في RTL: يسار = التالي بصريًا
+      } else if (e.key === "ArrowRight") {
+        goPrev();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, pageItems]);
+
+
   const reExtract = async () => {
     if (!currentPage) return;
     setReExtracting(true);
@@ -138,6 +186,16 @@ export default function ReconciliationReview() {
             <span className="text-sm text-muted-foreground">البنود: {pageItems.length}</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button size="sm" onClick={confirmAllAndNext} className="font-bold">
+              <CheckCircle2 className="h-4 w-4 ml-1" />
+              تأكيد الكل والتالي
+              <kbd className="mr-2 text-[10px] px-1 rounded bg-primary-foreground/20">Enter</kbd>
+            </Button>
+            <Button variant="outline" size="sm" onClick={flagAndNext}>
+              <HelpCircle className="h-4 w-4 ml-1" />
+              يحتاج مراجعة والتالي
+              <kbd className="mr-2 text-[10px] px-1 rounded bg-muted">F</kbd>
+            </Button>
             <Button variant="outline" size="sm" onClick={reExtract} disabled={reExtracting}>
               <RefreshCw className={`h-4 w-4 ml-1 ${reExtracting ? "animate-spin" : ""}`} />
               إعادة استخراج
@@ -146,7 +204,21 @@ export default function ReconciliationReview() {
               <Share2 className="h-4 w-4 ml-1" />
               مشاركة
             </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/reconciliation/${id}/export`}>
+                <Download className="h-4 w-4 ml-1" />
+                تصدير / طباعة
+              </Link>
+            </Button>
           </div>
+        </div>
+
+        {/* شريط التقدم */}
+        <div className="h-1.5 bg-muted">
+          <div
+            className="h-full bg-green-500 transition-all"
+            style={{ width: `${pages.length ? (pages.filter((p) => p.review_status === "confirmed").length / pages.length) * 100 : 0}%` }}
+          />
         </div>
 
         {/* Body: image + items */}
@@ -253,6 +325,9 @@ export default function ReconciliationReview() {
           </Button>
           <div className="flex items-center gap-2 text-sm">
             <span>الإذن {currentIdx + 1} من {pages.length}</span>
+            <span className="text-xs text-green-700 dark:text-green-400">
+              ({pages.filter((p) => p.review_status === "confirmed").length} مؤكد)
+            </span>
             <select
               className="border rounded px-2 py-1 text-xs bg-background"
               value={currentIdx}
