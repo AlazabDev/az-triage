@@ -72,7 +72,7 @@ export default function AgentChat() {
       let sysMsg = "أنت وكيل ذكي لتحليل البيانات. يمكنك استخدام الأدوات (Tools) المتاحة لقراءة ملفات التدريب المرفوعة وتحليلها للإجابة على المستخدم.";
       if (notes.trim()) sysMsg += "\nمعلومات إضافية والسياق:\n" + notes;
 
-      let apiMessages = [
+      const apiMessages = [
         { role: "system", content: sysMsg },
         ...messages.filter(m => m.id !== 'welcome').map(m => ({
           role: m.role === "agent" ? "assistant" : m.role,
