@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { Enums } from "@/integrations/supabase/types";
+import type { Enums } from "@/lib/db-types";
 
 const statusConfig: Record<Enums<"bug_status">, { label: string; dotClass: string }> = {
   new: { label: "New", dotClass: "bg-info" },

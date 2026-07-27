@@ -4,7 +4,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, parseISO, startOfDay } from "date-fns";
-import type { Tables } from "@/integrations/supabase/types";
+import type { Tables } from "@/lib/db-types";
 import { useNeonCharts } from "@/hooks/use-neon-charts";
 import { NeonPatternDefs, neonPatternId } from "@/components/NeonPatternDefs";
 import {
@@ -40,7 +40,7 @@ export default function Analytics() {
   const { getFill } = useNeonCharts();
 
   useEffect(() => {
-    supabase.from("bugs").select("*").then(({ data }) => {
+    (supabase as any).from("bugs").select("*").then(({ data }) => {
       setBugs(data ?? []);
       setLoading(false);
     });

@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Bug, Plus, Search, LayoutGrid, List, Loader2 } from "lucide-react";
-import type { Tables, Enums } from "@/integrations/supabase/types";
-import { Constants } from "@/integrations/supabase/types";
+import type { Tables, Enums } from "@/lib/db-types";
+import { Constants } from "@/lib/db-types";
 import { formatDistanceToNow } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { NeonPatternDefs } from "@/components/NeonPatternDefs";
@@ -52,7 +52,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchBugs = async () => {
-      const { data } = await supabase.from("bugs").select("*").order("created_at", { ascending: false });
+      const { data } = await (supabase as any).from("bugs").select("*").order("created_at", { ascending: false });
       setBugs(data || []);
       setLoading(false);
     };
