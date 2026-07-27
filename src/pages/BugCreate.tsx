@@ -41,8 +41,8 @@ export default function BugCreate() {
     }
     setSubmitting(true);
     try {
-      const { data, error } = await supabase
-        .from("bugs").insert({ ...trimmed, reporter_id: user.id }).select("tracking_id").single();
+      const { data, error } = await (supabase as any)
+      .from("bugs").insert({ ...trimmed, reporter_id: user.id }).select("tracking_id").single();
       if (error) throw error;
       toast({ title: "Bug reported!", description: `Tracking ID: ${data.tracking_id}` });
       navigate("/");

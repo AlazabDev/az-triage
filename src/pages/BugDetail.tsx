@@ -39,7 +39,7 @@ export default function BugDetail() {
 
   const fetchComments = async () => {
     if (!id) return;
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("comments").select("*").eq("bug_id", id).order("created_at", { ascending: true });
     setComments(data || []);
     const userIds = [...new Set((data || []).map(c => c.user_id))];

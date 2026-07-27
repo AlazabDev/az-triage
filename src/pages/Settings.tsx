@@ -202,7 +202,7 @@ function TeamTab() {
 
   const fetchData = async () => {
     const [teamRes, invitationsRes] = await Promise.all([
-      supabase.rpc("get_team_members"),
+      (supabase as any).rpc("get_team_members"),
       (supabase as any).from("invitations").select("*").eq("status", "pending"),
     ]);
     setMembers(teamRes.data || []);
