@@ -9,7 +9,7 @@ import { SeverityBadge } from "@/components/SeverityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Send } from "lucide-react";
-import type { Tables, Enums } from "@/integrations/supabase/types";
+import type { Tables, Enums } from "@/lib/db-types";
 import { formatDistanceToNow } from "date-fns";
 
 type BugRow = Tables<"bugs">;
@@ -32,19 +32,19 @@ export default function BugDetail() {
 
   const fetchBug = async () => {
     if (!id) return;
-    const { data } = await supabase.from("bugs").select("*").eq("id", id).single();
+    const { data } = await (supabase as any).from("bugs").select("*").eq("id", id).single();
     setBug(data);
     setLoading(false);
   };
 
   const fetchComments = async () => {
     if (!id) return;
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("comments").select("*").eq("bug_id", id).order("created_at", { ascending: true });
     setComments(data || []);
     const userIds = [...new Set((data || []).map(c => c.user_id))];
     if (userIds.length > 0) {
-      const { data: profileData } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
+      const { data: profileData } = await (supabase as any).from("profiles").select("user_id, full_name").in("user_id", userIds);
       const map: Record<string, string> = {};
       (profileData || []).forEach(p => { map[p.user_id] = p.full_name; });
       setProfiles(prev => ({ ...prev, ...map }));
@@ -64,11 +64,11 @@ export default function BugDetail() {
 
   const updateStatus = async (newStatus: Enums<"bug_status">) => {
     if (!bug || !user) return;
-    const { error } = await supabase.from("bugs").update({ status: newStatus }).eq("id", bug.id);
+    const { error } = await (supabase as any).from("bugs").update({ status: newStatus }).eq("id", bug.id);
     if (error) {
       toast({ title: "Failed to update status", description: error.message, variant: "destructive" });
     } else {
-      await supabase.from("activity_log").insert({
+      await (supabase as any).from("activity_log").insert({
         bug_id: bug.id, user_id: user.id, action: "status_change",
         old_value: bug.status, new_value: newStatus,
       });
@@ -79,7 +79,7 @@ export default function BugDetail() {
   const addComment = async () => {
     if (!newComment.trim() || !user || !bug) return;
     setSubmittingComment(true);
-    const { error } = await supabase.from("comments").insert({
+    const { error } = await (supabase as any).from("comments").insert({
       bug_id: bug.id, user_id: user.id, content: newComment.trim(),
     });
     if (error) toast({ title: "Failed to add comment", description: error.message, variant: "destructive" });

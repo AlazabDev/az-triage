@@ -14,27 +14,167 @@ export type Database = {
   }
   public: {
     Tables: {
-      [key: string]: {
-        Row: any;
-        Insert: any;
-        Update: any;
+      image_comments: {
+        Row: {
+          created_at: string
+          id: string
+          image_id: string
+          position_x: number | null
+          position_y: number | null
+          project_id: string
+          session_id: string | null
+          status: string
+          text: string
+          visitor_name: string
+          visitor_phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_id: string
+          position_x?: number | null
+          position_y?: number | null
+          project_id: string
+          session_id?: string | null
+          status?: string
+          text: string
+          visitor_name: string
+          visitor_phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_id?: string
+          position_x?: number | null
+          position_y?: number | null
+          project_id?: string
+          session_id?: string | null
+          status?: string
+          text?: string
+          visitor_name?: string
+          visitor_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_comments_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "project_images"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_images: {
+        Row: {
+          caption: string | null
+          captured_at: string | null
+          created_at: string
+          id: string
+          image_url: string
+          phase: string | null
+          project_id: string
+          sort_order: number
+        }
+        Insert: {
+          caption?: string | null
+          captured_at?: string | null
+          created_at?: string
+          id?: string
+          image_url: string
+          phase?: string | null
+          project_id: string
+          sort_order?: number
+        }
+        Update: {
+          caption?: string | null
+          captured_at?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string
+          phase?: string | null
+          project_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_images_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean
+          location: string | null
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          location?: string | null
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          location?: string | null
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      supcloud_keepalive: {
+        Row: {
+          id: number
+          marker: string
+        }
+        Insert: {
+          id: number
+          marker?: string
+        }
+        Update: {
+          id?: number
+          marker?: string
+        }
+        Relationships: []
       }
     }
     Views: {
-      [key: string]: {
-        Row: any;
-        Insert: any;
-        Update: any;
-      }
+      [_ in never]: never
     }
     Functions: {
-      [key: string]: any
+      [_ in never]: never
     }
     Enums: {
-      [key: string]: any
+      [_ in never]: never
     }
     CompositeTypes: {
-      [key: string]: any
+      [_ in never]: never
     }
   }
 }

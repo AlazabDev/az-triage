@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { Enums } from "@/integrations/supabase/types";
+import type { Enums } from "@/lib/db-types";
 
 const severityConfig: Record<Enums<"bug_severity">, { label: string; className: string }> = {
   critical: { label: "Critical", className: "text-severity-critical" },

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Plus, Bug, BarChart3, Settings, LogOut, Search, FileSearch, Brain, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Plus, Bug, BarChart3, Settings, LogOut, Search, FileSearch, Brain, MessageSquare, AudioLines } from "lucide-react";
 import { StackedLogo } from "./StackedLogo";
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
@@ -15,6 +15,7 @@ export const navItems = [
   { icon: FileSearch, label: "الفرز والمطابقة", path: "/reconciliation" },
   { icon: Brain, label: "تدريب الوكيل", path: "/agent-training" },
   { icon: MessageSquare, label: "الدردشة مع الوكيل", path: "/agent-chat" },
+  { icon: AudioLines, label: "مراجعة إذن صوتي", path: "/voice-review" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];

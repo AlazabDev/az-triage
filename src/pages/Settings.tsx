@@ -56,7 +56,7 @@ function ProfileTab() {
     if (uploadError) { toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); setUploadingAvatar(false); return; }
     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
     const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-    const { error: updateError } = await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("user_id", user.id);
+    const { error: updateError } = await (supabase as any).from("profiles").update({ avatar_url: avatarUrl }).eq("user_id", user.id);
     setUploadingAvatar(false);
     if (updateError) toast({ title: "Error", description: updateError.message, variant: "destructive" });
     else { toast({ title: "Avatar updated" }); await refreshProfile(); }
@@ -71,7 +71,7 @@ function ProfileTab() {
   const handleSaveProfile = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({ full_name: fullName, job_title: jobTitle }).eq("user_id", user.id);
+    const { error } = await (supabase as any).from("profiles").update({ full_name: fullName, job_title: jobTitle }).eq("user_id", user.id);
     setSaving(false);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { toast({ title: "Profile updated" }); await refreshProfile(); }
@@ -146,7 +146,7 @@ function CompanyTab() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("company_settings").select("*").eq("user_id", user.id).maybeSingle().then(({ data }) => {
+    (supabase as any).from("company_settings").select("*").eq("user_id", user.id).maybeSingle().then(({ data }) => {
       if (data) { setForm({ company_name: data.company_name || "", company_website: data.company_website || "", industry: data.industry || "", company_size: data.company_size || "", address: data.address || "", phone: data.phone || "" }); setExistingId(data.id); }
       setLoading(false);
     });
@@ -156,10 +156,10 @@ function CompanyTab() {
     if (!user) return;
     setSaving(true);
     if (existingId) {
-      const { error } = await supabase.from("company_settings").update(form).eq("id", existingId);
+      const { error } = await (supabase as any).from("company_settings").update(form).eq("id", existingId);
       if (error) toast({ title: "Error", description: error.message, variant: "destructive" }); else toast({ title: "Company settings saved" });
     } else {
-      const { data, error } = await supabase.from("company_settings").insert({ ...form, user_id: user.id }).select().single();
+      const { data, error } = await (supabase as any).from("company_settings").insert({ ...form, user_id: user.id }).select().single();
       if (error) toast({ title: "Error", description: error.message, variant: "destructive" }); else { setExistingId(data.id); toast({ title: "Company settings created" }); }
     }
     setSaving(false);
@@ -202,8 +202,8 @@ function TeamTab() {
 
   const fetchData = async () => {
     const [teamRes, invitationsRes] = await Promise.all([
-      supabase.rpc("get_team_members"),
-      supabase.from("invitations").select("*").eq("status", "pending"),
+      (supabase as any).rpc("get_team_members"),
+      (supabase as any).from("invitations").select("*").eq("status", "pending"),
     ]);
     setMembers(teamRes.data || []);
     setInvitations(invitationsRes.data || []);
@@ -215,14 +215,14 @@ function TeamTab() {
   const handleInvite = async () => {
     if (!user || !inviteEmail) return;
     setSending(true);
-    const { error } = await supabase.from("invitations").insert({ email: inviteEmail, role: inviteRole as any, invited_by: user.id });
+    const { error } = await (supabase as any).from("invitations").insert({ email: inviteEmail, role: inviteRole as any, invited_by: user.id });
     setSending(false);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { toast({ title: "Invitation sent", description: `Invited ${inviteEmail}` }); setInviteEmail(""); fetchData(); }
   };
 
   const handleRevoke = async (id: string) => {
-    const { error } = await supabase.from("invitations").delete().eq("id", id);
+    const { error } = await (supabase as any).from("invitations").delete().eq("id", id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { toast({ title: "Invitation revoked" }); fetchData(); }
   };
@@ -303,7 +303,7 @@ function EmailTab() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("notification_preferences").select("*").eq("user_id", user.id).maybeSingle().then(({ data }) => {
+    (supabase as any).from("notification_preferences").select("*").eq("user_id", user.id).maybeSingle().then(({ data }) => {
       if (data) { setPrefs({ email_on_new_bug: data.email_on_new_bug, email_on_assignment: data.email_on_assignment, email_on_status_change: data.email_on_status_change, email_on_comment: data.email_on_comment, email_on_sla_breach: data.email_on_sla_breach, daily_digest: data.daily_digest }); setExistingId(data.id); }
       setLoading(false);
     });
@@ -313,10 +313,10 @@ function EmailTab() {
     if (!user) return;
     setSaving(true);
     if (existingId) {
-      const { error } = await supabase.from("notification_preferences").update(prefs).eq("id", existingId);
+      const { error } = await (supabase as any).from("notification_preferences").update(prefs).eq("id", existingId);
       if (error) toast({ title: "Error", description: error.message, variant: "destructive" }); else toast({ title: "Preferences saved" });
     } else {
-      const { data, error } = await supabase.from("notification_preferences").insert({ ...prefs, user_id: user.id }).select().single();
+      const { data, error } = await (supabase as any).from("notification_preferences").insert({ ...prefs, user_id: user.id }).select().single();
       if (error) toast({ title: "Error", description: error.message, variant: "destructive" }); else { setExistingId(data.id); toast({ title: "Preferences saved" }); }
     }
     setSaving(false);

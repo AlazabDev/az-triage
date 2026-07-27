@@ -8,8 +8,8 @@ import { SeverityBadge } from "@/components/SeverityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Loader2 } from "lucide-react";
-import type { Tables, Enums } from "@/integrations/supabase/types";
-import { Constants } from "@/integrations/supabase/types";
+import type { Tables, Enums } from "@/lib/db-types";
+import { Constants } from "@/lib/db-types";
 import { formatDistanceToNow } from "date-fns";
 
 type BugRow = Tables<"bugs">;
@@ -24,7 +24,7 @@ export default function BugList() {
 
   useEffect(() => {
     const fetchBugs = async () => {
-      const { data } = await supabase.from("bugs").select("*").order("created_at", { ascending: false });
+      const { data } = await (supabase as any).from("bugs").select("*").order("created_at", { ascending: false });
       setBugs(data || []);
       setLoading(false);
     };

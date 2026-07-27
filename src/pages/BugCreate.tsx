@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { Constants } from "@/integrations/supabase/types";
-import type { Enums } from "@/integrations/supabase/types";
+import { Constants } from "@/lib/db-types";
+import type { Enums } from "@/lib/db-types";
 
 export default function BugCreate() {
   const { user } = useAuth();
@@ -41,8 +41,8 @@ export default function BugCreate() {
     }
     setSubmitting(true);
     try {
-      const { data, error } = await supabase
-        .from("bugs").insert({ ...trimmed, reporter_id: user.id }).select("tracking_id").single();
+      const { data, error } = await (supabase as any)
+      .from("bugs").insert({ ...trimmed, reporter_id: user.id }).select("tracking_id").single();
       if (error) throw error;
       toast({ title: "Bug reported!", description: `Tracking ID: ${data.tracking_id}` });
       navigate("/");
