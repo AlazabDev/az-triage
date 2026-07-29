@@ -33,27 +33,16 @@ export default function SharedReview() {
 
   const load = async () => {
     if (!token) return;
-    const { data: s } = await (supabase as any)
-      .from("reconciliation_sessions")
-      .select("*")
-      .eq("share_token", token)
-      .eq("is_public", true)
-      .maybeSingle();
-    if (!s) { setNotFound(true); return; }
-    setSession(s);
-    const [{ data: p }, { data: it }] = await Promise.all([
-      (supabase as any).from("receipt_pages").select("*").eq("session_id", s.id).order("page_index"),
-      (supabase as any).from("receipt_items").select("*").eq("session_id", s.id),
-    ]);
-    setPages(p ?? []);
-    setItems(it ?? []);
-    const map: Record<string, string> = {};
-    for (const pg of p ?? []) {
-      const { data } = await supabase.storage.from("maintenance-receipts").createSignedUrl(pg.image_path, 3600);
-      if (data?.signedUrl) map[pg.id] = data.signedUrl;
-    }
-    setUrls(map);
+    const { data, error } = await supabase.functions.invoke("get-shared-session", {
+      body: { shareToken: token },
+    });
+    if (error || !data?.session) { setNotFound(true); return; }
+    setSession(data.session);
+    setPages(data.pages ?? []);
+    setItems(data.items ?? []);
+    setUrls(data.imageUrls ?? {});
   };
+
 
   useEffect(() => { load(); }, [token]);
 
