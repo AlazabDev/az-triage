@@ -110,23 +110,14 @@ export default function AgentChat() {
       let maxTurns = 5;
       while (maxTurns > 0) {
         maxTurns--;
-        const res = await fetch("https://ollama.alazab.cloud/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Basic " + btoa("azureuser:Azab@202555ai")
-          },
-          body: JSON.stringify({
-            model: "qwen3.6:27b",
-            messages: apiMessages,
-            tools: tools
-          })
+        const { data, error } = await supabase.functions.invoke("ollama-chat", {
+          body: { model: "qwen3.6:27b", messages: apiMessages, tools },
         });
 
-        if (!res.ok) throw new Error("فشل الاتصال بالخادم");
-        const data = await res.json();
-        const responseMessage = data.choices?.[0]?.message;
-        
+        if (error) throw new Error(error.message || "فشل الاتصال بالخادم");
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const responseMessage = (data as any)?.choices?.[0]?.message;
+
         if (!responseMessage) throw new Error("رد فارغ من الخادم");
 
         apiMessages.push(responseMessage);
