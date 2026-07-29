@@ -2,3 +2,6 @@ project_id = "lyqkkrftypypnixaptms"
 
 [functions.approve-session]
 verify_jwt = false
+
+[functions.get-shared-session]
+verify_jwt = false
