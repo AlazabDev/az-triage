@@ -14,6 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      document_embeddings: {
+        Row: {
+          content: string
+          created_at: string
+          document_id: string
+          embedding: string | null
+          id: string
+          metadata: Json | null
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_embeddings_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "receipt_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_embeddings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      excel_snapshots: {
+        Row: {
+          columns: Json
+          created_at: string
+          id: string
+          original_filename: string
+          row_count: number
+          rows: Json
+          session_id: string
+          storage_path: string | null
+        }
+        Insert: {
+          columns?: Json
+          created_at?: string
+          id?: string
+          original_filename: string
+          row_count?: number
+          rows?: Json
+          session_id: string
+          storage_path?: string | null
+        }
+        Update: {
+          columns?: Json
+          created_at?: string
+          id?: string
+          original_filename?: string
+          row_count?: number
+          rows?: Json
+          session_id?: string
+          storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "excel_snapshots_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       image_comments: {
         Row: {
           created_at: string
@@ -70,6 +159,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      item_embeddings: {
+        Row: {
+          content: string
+          created_at: string
+          embedding: string | null
+          id: string
+          item_id: string
+          metadata: Json | null
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          item_id: string
+          metadata?: Json | null
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          item_id?: string
+          metadata?: Json | null
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_embeddings_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "receipt_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_embeddings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string
+          id: string
+          job_title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          job_title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          job_title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       project_images: {
         Row: {
@@ -148,6 +315,242 @@ export type Database = {
         }
         Relationships: []
       }
+      receipt_documents: {
+        Row: {
+          created_at: string
+          document_number: number
+          id: string
+          original_filename: string
+          page_count: number
+          session_id: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          document_number: number
+          id?: string
+          original_filename: string
+          page_count?: number
+          session_id: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          document_number?: number
+          id?: string
+          original_filename?: string
+          page_count?: number
+          session_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_documents_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipt_items: {
+        Row: {
+          ai_raw: Json | null
+          corrected_description: string | null
+          created_at: string
+          description: string
+          id: string
+          item_code: string
+          item_index: number
+          match_score: number | null
+          match_status: string
+          matched_excel_row: Json | null
+          page_id: string
+          quantity: number | null
+          reviewer_note: string | null
+          session_id: string
+          total: number | null
+          unit: string | null
+          unit_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          ai_raw?: Json | null
+          corrected_description?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          item_code: string
+          item_index: number
+          match_score?: number | null
+          match_status?: string
+          matched_excel_row?: Json | null
+          page_id: string
+          quantity?: number | null
+          reviewer_note?: string | null
+          session_id: string
+          total?: number | null
+          unit?: string | null
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ai_raw?: Json | null
+          corrected_description?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          item_code?: string
+          item_index?: number
+          match_score?: number | null
+          match_status?: string
+          matched_excel_row?: Json | null
+          page_id?: string
+          quantity?: number | null
+          reviewer_note?: string | null
+          session_id?: string
+          total?: number | null
+          unit?: string | null
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_items_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "receipt_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_items_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipt_pages: {
+        Row: {
+          branch: string | null
+          created_at: string
+          document_id: string
+          extraction_error: string | null
+          extraction_status: string
+          id: string
+          image_path: string
+          invoice_number: string | null
+          page_index: number
+          receipt_code: string
+          receipt_date: string | null
+          review_status: string
+          reviewer_note: string | null
+          session_id: string
+          supplier: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch?: string | null
+          created_at?: string
+          document_id: string
+          extraction_error?: string | null
+          extraction_status?: string
+          id?: string
+          image_path: string
+          invoice_number?: string | null
+          page_index: number
+          receipt_code: string
+          receipt_date?: string | null
+          review_status?: string
+          reviewer_note?: string | null
+          session_id: string
+          supplier?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch?: string | null
+          created_at?: string
+          document_id?: string
+          extraction_error?: string | null
+          extraction_status?: string
+          id?: string
+          image_path?: string
+          invoice_number?: string | null
+          page_index?: number
+          receipt_code?: string
+          receipt_date?: string | null
+          review_status?: string
+          reviewer_note?: string | null
+          session_id?: string
+          supplier?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_pages_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "receipt_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_pages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reconciliation_sessions: {
+        Row: {
+          branch: string | null
+          client_approved_at: string | null
+          client_approved_by: string | null
+          created_at: string
+          id: string
+          is_public: boolean
+          name: string
+          notes: string | null
+          owner_id: string
+          session_date: string | null
+          share_token: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          branch?: string | null
+          client_approved_at?: string | null
+          client_approved_by?: string | null
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          name: string
+          notes?: string | null
+          owner_id: string
+          session_date?: string | null
+          share_token?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          branch?: string | null
+          client_approved_at?: string | null
+          client_approved_by?: string | null
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          session_date?: string | null
+          share_token?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       supcloud_keepalive: {
         Row: {
           id: number
@@ -163,15 +566,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -298,6 +725,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
