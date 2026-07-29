@@ -208,6 +208,101 @@ export type Database = {
           },
         ]
       }
+      maintenance_items: {
+        Row: {
+          branch: string | null
+          created_at: string
+          description: string
+          id: string
+          item_date: string | null
+          item_index: number
+          quantity: number | null
+          receipt_code: string
+          status: string
+          total: number | null
+          unit: string | null
+          unit_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          branch?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          item_date?: string | null
+          item_index?: number
+          quantity?: number | null
+          receipt_code: string
+          status?: string
+          total?: number | null
+          unit?: string | null
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          branch?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          item_date?: string | null
+          item_index?: number
+          quantity?: number | null
+          receipt_code?: string
+          status?: string
+          total?: number | null
+          unit?: string | null
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_items_receipt_code_fkey"
+            columns: ["receipt_code"]
+            isOneToOne: false
+            referencedRelation: "maintenance_receipts"
+            referencedColumns: ["receipt_code"]
+          },
+        ]
+      }
+      maintenance_receipts: {
+        Row: {
+          branch: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          items_count: number
+          pdf_page: number | null
+          receipt_code: string
+          receipt_date: string | null
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          branch?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          items_count?: number
+          pdf_page?: number | null
+          receipt_code: string
+          receipt_date?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          branch?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          items_count?: number
+          pdf_page?: number | null
+          receipt_code?: string
+          receipt_date?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
