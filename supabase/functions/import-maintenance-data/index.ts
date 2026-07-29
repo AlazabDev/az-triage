@@ -7,14 +7,6 @@ const DATA_URL =
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
-  const key = req.headers.get('x-import-key');
-  if (!key || key !== Deno.env.get('AGENT_STORAGE_KEY')) {
-    return new Response(JSON.stringify({ error: 'unauthorized' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
   try {
     const res = await fetch(DATA_URL);
     if (!res.ok) throw new Error(`fetch data failed [${res.status}]`);
