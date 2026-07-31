@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { ChevronRight, ChevronLeft, CheckCircle2, AlertTriangle, HelpCircle, XCircle, RefreshCw, Share2, Download } from "lucide-react";
+import { ChevronRight, ChevronLeft, CheckCircle2, AlertTriangle, HelpCircle, XCircle, RefreshCw, Share2, Download, Wand2 } from "lucide-react";
+import { reconcileItem, type ExcelRow } from "@/lib/reconcile";
+import { downloadReconciliationExcel } from "@/lib/exportExcel";
 import { toast } from "@/hooks/use-toast";
 
 interface Page {
@@ -53,6 +55,8 @@ export default function ReconciliationReview() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [reExtracting, setReExtracting] = useState(false);
+  const [excelRows, setExcelRows] = useState<ExcelRow[]>([]);
+  const [matching, setMatching] = useState(false);
 
   const currentPage = pages[currentIdx];
   const pageItems = useMemo(
@@ -63,14 +67,16 @@ export default function ReconciliationReview() {
 
   const refresh = async () => {
     if (!id) return;
-    const [{ data: s }, { data: p }, { data: it }] = await Promise.all([
+    const [{ data: s }, { data: p }, { data: it }, { data: snap }] = await Promise.all([
       (supabase as any).from("reconciliation_sessions").select("*").eq("id", id).single(),
       (supabase as any).from("receipt_pages").select("*").eq("session_id", id).order("page_index"),
       (supabase as any).from("receipt_items").select("*").eq("session_id", id),
+      (supabase as any).from("excel_snapshots").select("rows").eq("session_id", id).maybeSingle(),
     ]);
     setSession(s);
     setPages(p ?? []);
     setItems(it ?? []);
+    setExcelRows((snap?.rows as ExcelRow[]) ?? []);
   };
 
   useEffect(() => { refresh(); }, [id]);
@@ -144,6 +150,48 @@ export default function ReconciliationReview() {
   }, [currentPage, pageItems]);
 
 
+  // مطابقة تلقائية لكل بنود الجلسة مع صفوف ملف الإكسيل المرجعي (تشابه نصي عربي).
+  const autoMatch = async () => {
+    if (!excelRows.length) {
+      toast({ title: "لا يوجد ملف إكسيل مرجعي", description: "ارفع ملف Excel مع الجلسة لتشغيل المطابقة", variant: "destructive" });
+      return;
+    }
+    setMatching(true);
+    try {
+      const keys = Object.keys(excelRows[0] ?? {});
+      const descKey =
+        keys.find((k) => /وصف|الصنف|البند|بيان/.test(k)) ??
+        keys.find((k) => typeof excelRows[0][k] === "string") ??
+        keys[0];
+      const qtyKey = keys.find((k) => /كمية/.test(k));
+
+      let matched = 0;
+      for (const it of items) {
+        const res = reconcileItem(
+          { id: it.id, description: it.description, quantity: it.quantity, unit: it.unit, unit_price: it.unit_price },
+          excelRows,
+          descKey,
+          qtyKey,
+        );
+        await (supabase as any)
+          .from("receipt_items")
+          .update({ match_status: res.status, match_score: res.score, matched_excel_row: res.row })
+          .eq("id", it.id);
+        if (res.status === "confirmed" || res.status === "partial") matched++;
+      }
+      await refresh();
+      toast({ title: "تمت المطابقة", description: `تم مطابقة ${matched} بند من ${items.length}` });
+    } catch (e: any) {
+      toast({ title: "فشلت المطابقة", description: e.message, variant: "destructive" });
+    } finally {
+      setMatching(false);
+    }
+  };
+
+  const exportXlsx = () => {
+    downloadReconciliationExcel(session?.name ?? "reconciliation", pages, items);
+  };
+
   const reExtract = async () => {
     if (!currentPage) return;
     setReExtracting(true);
@@ -204,11 +252,13 @@ export default function ReconciliationReview() {
               <Share2 className="h-4 w-4 ml-1" />
               مشاركة
             </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/reconciliation/${id}/export`}>
-                <Download className="h-4 w-4 ml-1" />
-                تصدير / طباعة
-              </Link>
+            <Button variant="outline" size="sm" onClick={autoMatch} disabled={matching}>
+              <Wand2 className={`h-4 w-4 ml-1 ${matching ? "animate-pulse" : ""}`} />
+              مطابقة تلقائية
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportXlsx}>
+              <Download className="h-4 w-4 ml-1" />
+              تصدير Excel
             </Button>
           </div>
         </div>

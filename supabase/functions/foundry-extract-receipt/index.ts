@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     // Fetch page + owner check via RLS
     const { data: page, error: pageErr } = await supabase
       .from('receipt_pages')
-      .select('id, session_id, image_path, page_index, document_id')
+      .select('id, session_id, image_path, page_index, document_id, receipt_code')
       .eq('id', body.pageId)
       .maybeSingle();
     if (pageErr || !page) return json({ error: 'Page not found', details: pageErr }, 404);
@@ -96,51 +96,35 @@ Deno.serve(async (req) => {
 
     const apiKey = Deno.env.get('AZURE_FOUNDRY_API_KEY');
     const agentId = Deno.env.get('AZURE_FOUNDRY_AGENT_ID');
-    if (!apiKey || !agentId) {
-      await admin.from('receipt_pages').update({ extraction_status: 'failed', extraction_error: 'Foundry credentials missing' }).eq('id', page.id);
-      return json({ error: 'Foundry credentials missing' }, 500);
+
+    let parsed: FoundryPayload | null = null;
+    const problems: string[] = [];
+
+    if (apiKey && agentId) {
+      try {
+        parsed = await runFoundry(apiKey, agentId, mime, b64);
+      } catch (e) {
+        problems.push(`foundry: ${(e as Error).message}`);
+      }
+    } else {
+      problems.push('foundry: credentials missing');
     }
 
-    // 1. Create thread
-    const thread = await foundry(`/threads?api-version=${API_VERSION}`, apiKey, 'POST', {});
-    if (!thread.ok) return failPage(admin, page.id, `thread: ${thread.status} ${thread.text}`);
-
-    // 2. Add message with image
-    const msg = await foundry(`/threads/${thread.data.id}/messages?api-version=${API_VERSION}`, apiKey, 'POST', {
-      role: 'user',
-      content: [
-        { type: 'text', text: SYSTEM_INSTRUCTIONS + '\n\nحلل الصورة المرفقة وأرجع JSON فقط.' },
-        { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
-      ],
-    });
-    if (!msg.ok) return failPage(admin, page.id, `message: ${msg.status} ${msg.text}`);
-
-    // 3. Run agent
-    const run = await foundry(`/threads/${thread.data.id}/runs?api-version=${API_VERSION}`, apiKey, 'POST', {
-      assistant_id: agentId,
-    });
-    if (!run.ok) return failPage(admin, page.id, `run: ${run.status} ${run.text}`);
-
-    // 4. Poll status
-    let status = run.data.status;
-    const runId = run.data.id;
-    const deadline = Date.now() + 90_000;
-    while (['queued', 'in_progress', 'requires_action'].includes(status) && Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 1500));
-      const poll = await foundry(`/threads/${thread.data.id}/runs/${runId}?api-version=${API_VERSION}`, apiKey, 'GET');
-      if (!poll.ok) return failPage(admin, page.id, `poll: ${poll.status} ${poll.text}`);
-      status = poll.data.status;
+    // Fallback: Lovable AI (multimodal) so the pipeline always produces items.
+    if (!parsed) {
+      try {
+        parsed = await runLovableAi(mime, b64);
+      } catch (e) {
+        problems.push(`lovable-ai: ${(e as Error).message}`);
+      }
     }
-    if (status !== 'completed') return failPage(admin, page.id, `run status: ${status}`);
 
-    // 5. List messages, pick latest assistant
-    const list = await foundry(`/threads/${thread.data.id}/messages?api-version=${API_VERSION}&order=desc&limit=5`, apiKey, 'GET');
-    if (!list.ok) return failPage(admin, page.id, `list: ${list.status} ${list.text}`);
+    if (!parsed) return failPage(admin, page.id, problems.join(' | '));
 
-    const assistantMsg = list.data.data?.find((m: any) => m.role === 'assistant');
-    const text = assistantMsg?.content?.map((c: any) => c.text?.value ?? '').join('\n') ?? '';
-    const parsed = parseJson(text);
-    if (!parsed) return failPage(admin, page.id, `parse failed: ${text.slice(0, 200)}`);
+    const receiptCode = (parsed.receipt_code && !/^page-\d+$/i.test(parsed.receipt_code))
+      ? parsed.receipt_code
+      : (page as any).receipt_code ?? String(page.page_index);
+
 
     // Persist page fields + items
     const pageUpdate: Record<string, unknown> = {
@@ -224,6 +208,71 @@ Deno.serve(async (req) => {
     return json({ error: (e as Error).message }, 500);
   }
 });
+
+async function runFoundry(apiKey: string, agentId: string, mime: string, b64: string): Promise<FoundryPayload | null> {
+  const thread = await foundry(`/threads?api-version=${API_VERSION}`, apiKey, 'POST', {});
+  if (!thread.ok) throw new Error(`thread ${thread.status} ${thread.text.slice(0, 200)}`);
+
+  const msg = await foundry(`/threads/${thread.data.id}/messages?api-version=${API_VERSION}`, apiKey, 'POST', {
+    role: 'user',
+    content: [
+      { type: 'text', text: SYSTEM_INSTRUCTIONS + '\n\nحلل الصورة المرفقة وأرجع JSON فقط.' },
+      { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
+    ],
+  });
+  if (!msg.ok) throw new Error(`message ${msg.status} ${msg.text.slice(0, 200)}`);
+
+  const run = await foundry(`/threads/${thread.data.id}/runs?api-version=${API_VERSION}`, apiKey, 'POST', { assistant_id: agentId });
+  if (!run.ok) throw new Error(`run ${run.status} ${run.text.slice(0, 200)}`);
+
+  let status = run.data.status;
+  const deadline = Date.now() + 90_000;
+  while (['queued', 'in_progress', 'requires_action'].includes(status) && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const poll = await foundry(`/threads/${thread.data.id}/runs/${run.data.id}?api-version=${API_VERSION}`, apiKey, 'GET');
+    if (!poll.ok) throw new Error(`poll ${poll.status}`);
+    status = poll.data.status;
+  }
+  if (status !== 'completed') throw new Error(`run status ${status}`);
+
+  const list = await foundry(`/threads/${thread.data.id}/messages?api-version=${API_VERSION}&order=desc&limit=5`, apiKey, 'GET');
+  if (!list.ok) throw new Error(`list ${list.status}`);
+  const assistantMsg = list.data.data?.find((m: any) => m.role === 'assistant');
+  const text = assistantMsg?.content?.map((c: any) => c.text?.value ?? '').join('\n') ?? '';
+  const parsed = parseJson(text);
+  if (!parsed) throw new Error(`parse failed: ${text.slice(0, 200)}`);
+  return parsed;
+}
+
+async function runLovableAi(mime: string, b64: string): Promise<FoundryPayload | null> {
+  const key = Deno.env.get('LOVABLE_API_KEY');
+  if (!key) throw new Error('LOVABLE_API_KEY missing');
+  const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Lovable-API-Key': key },
+    body: JSON.stringify({
+      model: 'openai/gpt-5.6-sol',
+      reasoning_effort: 'none',
+      messages: [
+        { role: 'system', content: SYSTEM_INSTRUCTIONS },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'حلل صورة إذن الاستلام وأرجع JSON فقط.' },
+            { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
+          ],
+        },
+      ],
+    }),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`gateway ${res.status} ${text.slice(0, 300)}`);
+  let content = '';
+  try { content = JSON.parse(text)?.choices?.[0]?.message?.content ?? ''; } catch { content = text; }
+  const parsed = parseJson(content);
+  if (!parsed) throw new Error(`parse failed: ${content.slice(0, 200)}`);
+  return parsed;
+}
 
 async function foundry(path: string, apiKey: string, method: string, body?: unknown) {
   const res = await fetch(`${FOUNDRY_ENDPOINT}${path}`, {
