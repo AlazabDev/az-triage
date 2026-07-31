@@ -96,51 +96,35 @@ Deno.serve(async (req) => {
 
     const apiKey = Deno.env.get('AZURE_FOUNDRY_API_KEY');
     const agentId = Deno.env.get('AZURE_FOUNDRY_AGENT_ID');
-    if (!apiKey || !agentId) {
-      await admin.from('receipt_pages').update({ extraction_status: 'failed', extraction_error: 'Foundry credentials missing' }).eq('id', page.id);
-      return json({ error: 'Foundry credentials missing' }, 500);
+
+    let parsed: FoundryPayload | null = null;
+    const problems: string[] = [];
+
+    if (apiKey && agentId) {
+      try {
+        parsed = await runFoundry(apiKey, agentId, mime, b64);
+      } catch (e) {
+        problems.push(`foundry: ${(e as Error).message}`);
+      }
+    } else {
+      problems.push('foundry: credentials missing');
     }
 
-    // 1. Create thread
-    const thread = await foundry(`/threads?api-version=${API_VERSION}`, apiKey, 'POST', {});
-    if (!thread.ok) return failPage(admin, page.id, `thread: ${thread.status} ${thread.text}`);
-
-    // 2. Add message with image
-    const msg = await foundry(`/threads/${thread.data.id}/messages?api-version=${API_VERSION}`, apiKey, 'POST', {
-      role: 'user',
-      content: [
-        { type: 'text', text: SYSTEM_INSTRUCTIONS + '\n\nحلل الصورة المرفقة وأرجع JSON فقط.' },
-        { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
-      ],
-    });
-    if (!msg.ok) return failPage(admin, page.id, `message: ${msg.status} ${msg.text}`);
-
-    // 3. Run agent
-    const run = await foundry(`/threads/${thread.data.id}/runs?api-version=${API_VERSION}`, apiKey, 'POST', {
-      assistant_id: agentId,
-    });
-    if (!run.ok) return failPage(admin, page.id, `run: ${run.status} ${run.text}`);
-
-    // 4. Poll status
-    let status = run.data.status;
-    const runId = run.data.id;
-    const deadline = Date.now() + 90_000;
-    while (['queued', 'in_progress', 'requires_action'].includes(status) && Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 1500));
-      const poll = await foundry(`/threads/${thread.data.id}/runs/${runId}?api-version=${API_VERSION}`, apiKey, 'GET');
-      if (!poll.ok) return failPage(admin, page.id, `poll: ${poll.status} ${poll.text}`);
-      status = poll.data.status;
+    // Fallback: Lovable AI (multimodal) so the pipeline always produces items.
+    if (!parsed) {
+      try {
+        parsed = await runLovableAi(mime, b64);
+      } catch (e) {
+        problems.push(`lovable-ai: ${(e as Error).message}`);
+      }
     }
-    if (status !== 'completed') return failPage(admin, page.id, `run status: ${status}`);
 
-    // 5. List messages, pick latest assistant
-    const list = await foundry(`/threads/${thread.data.id}/messages?api-version=${API_VERSION}&order=desc&limit=5`, apiKey, 'GET');
-    if (!list.ok) return failPage(admin, page.id, `list: ${list.status} ${list.text}`);
+    if (!parsed) return failPage(admin, page.id, problems.join(' | '));
 
-    const assistantMsg = list.data.data?.find((m: any) => m.role === 'assistant');
-    const text = assistantMsg?.content?.map((c: any) => c.text?.value ?? '').join('\n') ?? '';
-    const parsed = parseJson(text);
-    if (!parsed) return failPage(admin, page.id, `parse failed: ${text.slice(0, 200)}`);
+    const receiptCode = (parsed.receipt_code && !/^page-\d+$/i.test(parsed.receipt_code))
+      ? parsed.receipt_code
+      : (page as any).receipt_code ?? String(page.page_index);
+
 
     // Persist page fields + items
     const pageUpdate: Record<string, unknown> = {
