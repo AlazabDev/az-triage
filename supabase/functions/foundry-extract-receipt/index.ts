@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     // Fetch page + owner check via RLS
     const { data: page, error: pageErr } = await supabase
       .from('receipt_pages')
-      .select('id, session_id, image_path, page_index, document_id')
+      .select('id, session_id, image_path, page_index, document_id, receipt_code')
       .eq('id', body.pageId)
       .maybeSingle();
     if (pageErr || !page) return json({ error: 'Page not found', details: pageErr }, 404);
@@ -208,6 +208,71 @@ Deno.serve(async (req) => {
     return json({ error: (e as Error).message }, 500);
   }
 });
+
+async function runFoundry(apiKey: string, agentId: string, mime: string, b64: string): Promise<FoundryPayload | null> {
+  const thread = await foundry(`/threads?api-version=${API_VERSION}`, apiKey, 'POST', {});
+  if (!thread.ok) throw new Error(`thread ${thread.status} ${thread.text.slice(0, 200)}`);
+
+  const msg = await foundry(`/threads/${thread.data.id}/messages?api-version=${API_VERSION}`, apiKey, 'POST', {
+    role: 'user',
+    content: [
+      { type: 'text', text: SYSTEM_INSTRUCTIONS + '\n\nحلل الصورة المرفقة وأرجع JSON فقط.' },
+      { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
+    ],
+  });
+  if (!msg.ok) throw new Error(`message ${msg.status} ${msg.text.slice(0, 200)}`);
+
+  const run = await foundry(`/threads/${thread.data.id}/runs?api-version=${API_VERSION}`, apiKey, 'POST', { assistant_id: agentId });
+  if (!run.ok) throw new Error(`run ${run.status} ${run.text.slice(0, 200)}`);
+
+  let status = run.data.status;
+  const deadline = Date.now() + 90_000;
+  while (['queued', 'in_progress', 'requires_action'].includes(status) && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const poll = await foundry(`/threads/${thread.data.id}/runs/${run.data.id}?api-version=${API_VERSION}`, apiKey, 'GET');
+    if (!poll.ok) throw new Error(`poll ${poll.status}`);
+    status = poll.data.status;
+  }
+  if (status !== 'completed') throw new Error(`run status ${status}`);
+
+  const list = await foundry(`/threads/${thread.data.id}/messages?api-version=${API_VERSION}&order=desc&limit=5`, apiKey, 'GET');
+  if (!list.ok) throw new Error(`list ${list.status}`);
+  const assistantMsg = list.data.data?.find((m: any) => m.role === 'assistant');
+  const text = assistantMsg?.content?.map((c: any) => c.text?.value ?? '').join('\n') ?? '';
+  const parsed = parseJson(text);
+  if (!parsed) throw new Error(`parse failed: ${text.slice(0, 200)}`);
+  return parsed;
+}
+
+async function runLovableAi(mime: string, b64: string): Promise<FoundryPayload | null> {
+  const key = Deno.env.get('LOVABLE_API_KEY');
+  if (!key) throw new Error('LOVABLE_API_KEY missing');
+  const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Lovable-API-Key': key },
+    body: JSON.stringify({
+      model: 'openai/gpt-5.6-sol',
+      reasoning_effort: 'none',
+      messages: [
+        { role: 'system', content: SYSTEM_INSTRUCTIONS },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'حلل صورة إذن الاستلام وأرجع JSON فقط.' },
+            { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
+          ],
+        },
+      ],
+    }),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`gateway ${res.status} ${text.slice(0, 300)}`);
+  let content = '';
+  try { content = JSON.parse(text)?.choices?.[0]?.message?.content ?? ''; } catch { content = text; }
+  const parsed = parseJson(content);
+  if (!parsed) throw new Error(`parse failed: ${content.slice(0, 200)}`);
+  return parsed;
+}
 
 async function foundry(path: string, apiKey: string, method: string, body?: unknown) {
   const res = await fetch(`${FOUNDRY_ENDPOINT}${path}`, {
