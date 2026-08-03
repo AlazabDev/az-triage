@@ -531,6 +531,7 @@ export type Database = {
       }
       receipt_pages: {
         Row: {
+          annotations: Json
           branch: string | null
           created_at: string
           document_id: string
@@ -549,6 +550,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          annotations?: Json
           branch?: string | null
           created_at?: string
           document_id: string
@@ -567,6 +569,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          annotations?: Json
           branch?: string | null
           created_at?: string
           document_id?: string
