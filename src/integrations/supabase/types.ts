@@ -66,6 +66,7 @@ export type Database = {
         Row: {
           columns: Json
           created_at: string
+          file_kind: string
           id: string
           original_filename: string
           row_count: number
@@ -76,6 +77,7 @@ export type Database = {
         Insert: {
           columns?: Json
           created_at?: string
+          file_kind?: string
           id?: string
           original_filename: string
           row_count?: number
@@ -86,6 +88,7 @@ export type Database = {
         Update: {
           columns?: Json
           created_at?: string
+          file_kind?: string
           id?: string
           original_filename?: string
           row_count?: number
