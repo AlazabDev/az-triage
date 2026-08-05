@@ -22,6 +22,7 @@ import SharedReview from "./pages/SharedReview";
 import AgentTraining from "./pages/AgentTraining";
 import AgentChat from "./pages/AgentChat";
 import VoiceReview from "./pages/VoiceReview";
+import OAuthConsent from "./pages/OAuthConsent";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/agent-training" element={<ProtectedRoute><AgentTraining /></ProtectedRoute>} />
               <Route path="/agent-chat" element={<ProtectedRoute><AgentChat /></ProtectedRoute>} />
               <Route path="/voice-review" element={<ProtectedRoute><VoiceReview /></ProtectedRoute>} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="/share/:token" element={<SharedReview />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
