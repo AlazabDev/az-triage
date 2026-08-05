@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,10 @@ import { lovable } from "@/integrations/lovable/index";
 
 export default function Auth() {
   const { user, loading, signIn, signUp } = useAuth();
+  const [searchParams] = useSearchParams();
+  const rawNext = searchParams.get("next") ?? "";
+  // Only allow same-origin relative paths.
+  const next = /^\/(?!\/)/.test(rawNext) ? rawNext : "/";
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -30,12 +34,12 @@ export default function Auth() {
     );
   }
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={next} replace />;
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+      const { error } = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + next });
       if (error) toast({ title: "Google sign-in failed", description: error.message, variant: "destructive" });
     } catch (error: any) {
       toast({ title: "Google sign-in failed", description: error.message, variant: "destructive" });
@@ -65,7 +69,7 @@ export default function Auth() {
     }
     setIsSubmitting(true);
     try {
-      await signUp(signupEmail, signupPassword, signupName);
+      await signUp(signupEmail, signupPassword, signupName, window.location.origin + next);
       toast({ title: "Account created!", description: "Check your email to confirm your account." });
     } catch (error: any) {
       toast({ title: "Signup failed", description: error.message, variant: "destructive" });

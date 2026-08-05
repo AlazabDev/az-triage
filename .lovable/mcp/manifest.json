@@ -1,0 +1,241 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://lyqkkrftypypnixaptms.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "aztriage",
+      "version": "0.1.0",
+      "title": "AzTriage"
+    },
+    "tools": [
+      {
+        "name": "list_reconciliation_sessions",
+        "title": "List reconciliation sessions",
+        "description": "List the signed-in user's reconciliation sessions (الفرز والمطابقة), newest first, with status and branch.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "description": "Maximum number of sessions to return."
+            },
+            "status": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Optional status filter, e.g. draft, in_review, approved."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_reconciliation_session",
+        "title": "Get reconciliation session",
+        "description": "Get one reconciliation session owned by the signed-in user, including its receipt pages, reference files and item match counts.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "session_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The reconciliation session id."
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_receipt_items",
+        "title": "List receipt items",
+        "description": "List extracted receipt items for one reconciliation session, optionally filtered by match status (e.g. confirmed, partial, needs_review).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "session_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The reconciliation session id."
+            },
+            "match_status": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Optional match status filter, e.g. confirmed, partial, needs_review."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "description": "Maximum number of items to return."
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "review_receipt_item",
+        "title": "Review receipt item",
+        "description": "Update the review outcome of one extracted receipt item: set its match status, a reviewer note, and/or a corrected description.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "item_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The receipt item id."
+            },
+            "match_status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "confirmed",
+                    "partial",
+                    "needs_review",
+                    "unmatched"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "New match status, or null to leave unchanged."
+            },
+            "reviewer_note": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Reviewer note to store, or null to leave unchanged."
+            },
+            "corrected_description": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Corrected item description, or null to leave unchanged."
+            }
+          },
+          "required": [
+            "item_id",
+            "match_status",
+            "reviewer_note",
+            "corrected_description"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_maintenance_items",
+        "title": "Search maintenance items",
+        "description": "Search the maintenance reference dataset (اذونات الاستلام) by item description, receipt code or branch. Requires an admin or moderator account.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Text to match in the item description, or null."
+            },
+            "receipt_code": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 50
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exact receipt code such as auf-001, or null."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "description": "Maximum number of items to return."
+            }
+          },
+          "required": [
+            "query",
+            "receipt_code"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
